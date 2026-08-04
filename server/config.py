@@ -8,6 +8,10 @@
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# 自动加载项目根目录下的 .env 文件
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 BASE_DIR = Path(__file__).parent.parent
 

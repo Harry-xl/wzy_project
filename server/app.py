@@ -1,9 +1,14 @@
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# 自动加载项目根目录下的 .env 文件
+load_dotenv(Path(__file__).parent.parent / ".env")
+
 from flask import Flask, request, jsonify, Response, redirect, url_for
 from flask_cors import CORS
 import mysql.connector
 import sys
-from pathlib import Path
 from werkzeug.security import generate_password_hash, check_password_hash
 # 新增: 清理调度所需
 import threading
