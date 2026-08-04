@@ -1,0 +1,8 @@
+flask==2.0.1
+flask-cors==3.0.10
+mysql-connector-python==8.0.26
+werkzeug==2.2.3
+chromadb>=0.4.0
+python-dotenv>=1.0.0
+sentence-transformers>=2.7.0
+deepseek_importer/requirements.txt

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<title>API 诊断</title>
+<style>
+body{font-family:sans-serif;max-width:700px;margin:40px auto;padding:0 20px}
+button{padding:10px 20px;margin:8px 4px;cursor:pointer;font-size:14px}
+pre{background:#1a1a2e;color:#e0e0e0;padding:12px;border-radius:8px;overflow-x:auto;max-height:300px;font-size:12px}
+.error{color:#ef4444}.ok{color:#10b981}
+</style>
+</head>
+<body>
+<h2>StarPal API 诊断</h2>
+
+<div>
+  <button onclick="testExplain()">测试 AI 讲解 (/api/explain)</button>
+  <button onclick="testExplainStream()">测试 流式讲解 (/api/explain/stream)</button>
+  <button onclick="testChat()">测试 AI 聊天 (/api/chat)</button>
+  <button onclick="testChatRag()">测试 AI 聊天 + RAG</button>
+  <button onclick="testKnowledgeSearch()">测试 知识检索</button>
+</div>
+
+<pre id="output">点击上方按钮开始测试...</pre>
+
+<script>
+const BASE = 'http://127.0.0.1:3001';
+const out = document.getElementById('output');
+
+function log(msg, cls='') {
+  out.innerHTML += `\n${cls ? `<span class="${cls}">${msg}</span>` : msg}`;
+  out.scrollTop = out.scrollHeight;
+}
+
+async function testExplain() {
+  out.innerHTML = '测试 /api/explain ...';
+  try {
+    const resp = await fetch(`${BASE}/api/explain`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        problem_text: 'TCP三次握手的过程是什么？',
+        knowledge_point: 'TCP连接管理',
+        difficulty: '中等',
+        user_answer: '两次握手',
+        correct_answer: 'SYN→SYN-ACK→ACK'
+      })
+    });
+    log(`HTTP ${resp.status}`, resp.ok ? 'ok' : 'error');
+    const data = await resp.json();
+    log(`success=${data.success}, explanation长度=${(data.explanation||'').length}`);
+    if (data.explanation) log(data.explanation.substring(0,200) + '...');
+  } catch(e) {
+    log(`失败: ${e.message}`, 'error');
+  }
+}
+
+async function testExplainStream() {
+  out.innerHTML = '测试 /api/explain/stream ...';
+  try {
+    const resp = await fetch(`${BASE}/api/explain/stream`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({problem_text: '什么是OSPF协议', knowledge_point: '路由算法与协议'})
+    });
+    log(`HTTP ${resp.status}`, resp.ok ? 'ok' : 'error');
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let count = 0, text = '';
+    while(true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, {stream: true});
+      count++;
+    }
+    log(`收到 ${count} 个chunk, 总长度=${text.length}`);
+    log(text.substring(0, 200));
+  } catch(e) {
+    log(`失败: ${e.message}`, 'error');
+  }
+}
+
+async function testChat() {
+  out.innerHTML = '测试 /api/chat (use_rag=false) ...';
+  try {
+    const resp = await fetch(`${BASE}/api/chat`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: '什么是TCP三次握手', use_rag: false})
+    });
+    log(`HTTP ${resp.status}`, resp.ok ? 'ok' : 'error');
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let sseBuf = '', eventAcc = '', full = '';
+    while(true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      sseBuf += decoder.decode(value, {stream: true});
+      let idx;
+      while((idx = sseBuf.indexOf('\n')) >= 0) {
+        let line = sseBuf.slice(0, idx).replace(/\r$/, ''); sseBuf = sseBuf.slice(idx+1);
+        if (line === '') {
+          try { const o = JSON.parse(eventAcc); if (o.reply) full += o.reply; } catch(_){}
+          eventAcc = '';
+        } else if (line.startsWith('data:')) eventAcc += line.slice(5).trim();
+      }
+    }
+    log(`回复长度=${full.length}, 内容预览:`);
+    log(full.substring(0, 300));
+  } catch(e) {
+    log(`失败: ${e.message}`, 'error');
+  }
+}
+
+async function testChatRag() {
+  out.innerHTML = '测试 /api/chat (use_rag=true, 默认) ...';
+  try {
+    const resp = await fetch(`${BASE}/api/chat`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: 'TCP拥塞控制有哪些算法'})
+    });
+    log(`HTTP ${resp.status}`, resp.ok ? 'ok' : 'error');
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let sseBuf = '', eventAcc = '', full = '', sources = null;
+    while(true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      sseBuf += decoder.decode(value, {stream: true});
+      let idx;
+      while((idx = sseBuf.indexOf('\n')) >= 0) {
+        let line = sseBuf.slice(0, idx).replace(/\r$/, ''); sseBuf = sseBuf.slice(idx+1);
+        if (line === '') {
+          try {
+            const o = JSON.parse(eventAcc);
+            if (o.reply) full += o.reply;
+            if (o.done && o.sources) sources = o.sources;
+          } catch(_){}
+          eventAcc = '';
+        } else if (line.startsWith('data:')) eventAcc += line.slice(5).trim();
+      }
+    }
+    log(`回复长度=${full.length}, 来源数=${sources ? sources.length : 0}`);
+    log(full.substring(0, 300));
+    if (sources) sources.forEach(s => log(`  [${s.index}] ${s.title}`));
+  } catch(e) {
+    log(`失败: ${e.message}`, 'error');
+  }
+}
+
+async function testKnowledgeSearch() {
+  out.innerHTML = '测试 /api/knowledge/search ...';
+  try {
+    const resp = await fetch(`${BASE}/api/knowledge/search?q=TCP三次握手&top_k=3`);
+    log(`HTTP ${resp.status}`, resp.ok ? 'ok' : 'error');
+    const data = await resp.json();
+    log(`success=${data.success}, 找到 ${data.total} 个结果`);
+    (data.chunks||[]).forEach(c => log(`  [${c.score}] ${c.doc_title}`));
+  } catch(e) {
+    log(`失败: ${e.message}`, 'error');
+  }
+}
+</script>
+</body>
+</html>

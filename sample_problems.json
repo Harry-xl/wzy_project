@@ -1,0 +1,72 @@
+[
+  {
+    "problem_num": "T001",
+    "problem": "以下哪个是Python中正确的变量命名方式？",
+    "answer": "my_variable",
+    "difficulty": "easy",
+    "knowledge_point": "变量命名"
+  },
+  {
+    "problem_num": "T002",
+    "problem": "Python中用于输出内容到控制台的函数是什么？",
+    "answer": "print()",
+    "difficulty": "easy",
+    "knowledge_point": "基础语法"
+  },
+  {
+    "problem_num": "T003",
+    "problem": "在Python中，如何创建一个空列表？",
+    "answer": "[]",
+    "difficulty": "easy",
+    "knowledge_point": "数据结构"
+  },
+  {
+    "problem_num": "T004",
+    "problem": "Python中哪个关键字用于定义函数？",
+    "answer": "def",
+    "difficulty": "medium",
+    "knowledge_point": "函数定义"
+  },
+  {
+    "problem_num": "T005",
+    "problem": "以下哪个方法可以用来获取字符串的长度？",
+    "answer": "len()",
+    "difficulty": "medium",
+    "knowledge_point": "字符串操作"
+  },
+  {
+    "problem_num": "T006",
+    "problem": "Python中如何导入math模块？",
+    "answer": "import math",
+    "difficulty": "medium",
+    "knowledge_point": "模块导入"
+  },
+  {
+    "problem_num": "T007",
+    "problem": "在Python中，什么是装饰器？",
+    "answer": "装饰器是一种设计模式，允许用户在不修改函数定义的情况下增加函数功能",
+    "difficulty": "hard",
+    "knowledge_point": "高级特性"
+  },
+  {
+    "problem_num": "T008",
+    "problem": "Python中生成器和迭代器的区别是什么？",
+    "answer": "生成器是一种特殊的迭代器，使用yield关键字，可以暂停和恢复执行",
+    "difficulty": "hard",
+    "knowledge_point": "高级特性"
+  },
+  {
+    "problem_num": "T009",
+    "problem": "如何在Python中实现多线程？",
+    "answer": "使用threading模块",
+    "difficulty": "hard",
+    "knowledge_point": "并发编程"
+  },
+  {
+    "problem_num": "T010",
+    "problem": "Python中的GIL是什么？",
+    "answer": "全局解释器锁，确保同一时间只有一个线程执行Python字节码",
+    "difficulty": "hard",
+    "knowledge_point": "并发编程"
+  }
+]

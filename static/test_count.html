@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <title>题目数量功能测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        input, button { padding: 8px 12px; margin: 5px; }
+        .result { margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 3px; }
+        .debug { color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>题目数量功能测试</h1>
+    
+    <div class="test-section">
+        <h3>测试输入框和按钮</h3>
+        <label>题目数量:</label>
+        <input type="number" id="countInput" min="1" max="50" placeholder="默认5道" />
+        <button id="testBtn">测试获取题目</button>
+        <div class="result" id="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>调试信息</h3>
+        <div class="debug" id="debugInfo"></div>
+    </div>
+
+    <script>
+        // 简化的 API 客户端
+        class SimpleApiClient {
+            constructor() {
+                this.baseUrl = 'http://127.0.0.1:3000';
+            }
+            
+            async getProblems(userId = null, count = 5) {
+                console.log('[test] getProblems called with userId=', userId, ' count=', count);
+                const qs = new URLSearchParams();
+                qs.set('count', count);
+                if (userId) qs.set('user_id', userId);
+                const url = `${this.baseUrl}/api/problems?${qs.toString()}`;
+                console.log('[test] 请求URL =', url);
+                
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    console.log('[test] 服务器响应:', data);
+                    return data;
+                } catch (error) {
+                    console.error('[test] 请求错误:', error);
+                    return { success: false, message: error.message };
+                }
+            }
+        }
+
+        const apiClient = new SimpleApiClient();
+        const countInput = document.getElementById('countInput');
+        const testBtn = document.getElementById('testBtn');
+        const result = document.getElementById('result');
+        const debugInfo = document.getElementById('debugInfo');
+
+        function parseCount() {
+            console.log('[test] parseCount 开始执行');
+            console.log('[test] countInput元素:', countInput);
+            const raw = (countInput?.value ?? '').trim();
+            console.log('[test] 用户输入的题量原始值:', raw);
+            console.log('[test] countInput.value类型:', typeof countInput?.value);
+            
+            if (raw === '') {
+                console.log('[test] 输入框为空，使用默认题量: 5');
+                return 5;
+            }
+            
+            const n = Number(raw);
+            console.log('[test] 转换后的数字:', n);
+            if (!Number.isInteger(n) || n <= 0) {
+                console.log('[test] 使用默认题量: 5，原因: 不是正整数或小于等于0');
+                return 5;
+            }
+            const finalCount = Math.min(n, 50);
+            console.log('[test] 最终题量:', finalCount);
+            return finalCount;
+        }
+
+        async function testGetProblems() {
+            const count = parseCount();
+            debugInfo.innerHTML = `解析的题目数量: ${count}<br>`;
+            result.innerHTML = '正在请求题目...';
+            
+            try {
+                const resp = await apiClient.getProblems(null, count);
+                if (resp && resp.success && resp.problems) {
+                    const actualCount = resp.problems.length;
+                    result.innerHTML = `✅ 成功！请求 ${count} 道题目，实际返回 ${actualCount} 道题目`;
+                    debugInfo.innerHTML += `服务器返回题目数量: ${actualCount}<br>`;
+                    debugInfo.innerHTML += `题目列表: ${resp.problems.map(p => p.problem_id).join(', ')}<br>`;
+                } else {
+                    result.innerHTML = `❌ 失败: ${resp?.message || '未知错误'}`;
+                }
+            } catch (error) {
+                result.innerHTML = `❌ 请求错误: ${error.message}`;
+            }
+        }
+
+        testBtn.addEventListener('click', testGetProblems);
+        
+        // 页面加载完成后显示当前状态
+        document.addEventListener('DOMContentLoaded', () => {
+            debugInfo.innerHTML = `页面加载完成<br>countInput元素: ${countInput ? '找到' : '未找到'}<br>`;
+        });
+    </script>
+</body>
+</html>

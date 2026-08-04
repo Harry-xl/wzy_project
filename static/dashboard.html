@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>星伴 StarPal — 学习仪表盘</title>
+  <link rel="icon" href="assets/girl.png" type="image/png">
+  <link rel="stylesheet" href="assets/starpal-style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="app-layout">
+  <!-- ===== 侧边栏 ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <img src="assets/girl.png" alt="StarPal" class="sidebar-brand-avatar">
+      <span class="sidebar-brand-text">星伴 StarPal</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-nav-label">学习</div>
+      <button class="nav-item active" data-section="exam">
+        <i class="ri-pencil-line"></i> <span>智能做题</span>
+      </button>
+      <button class="nav-item" data-section="profile">
+        <i class="ri-bar-chart-2-line"></i> <span>能力画像</span>
+      </button>
+      <button class="nav-item" data-section="wrong">
+        <i class="ri-book-open-line"></i> <span>错题本</span>
+      </button>
+      <button class="nav-item" data-section="chat">
+        <i class="ri-chat-smile-2-line"></i> <span>AI 伴学</span>
+      </button>
+      <button class="nav-item" data-section="bookmarks">
+        <i class="ri-star-line"></i> <span>收藏夹</span>
+      </button>
+      <div class="sidebar-nav-label">管理</div>
+      <button class="nav-item" data-section="admin">
+        <i class="ri-settings-3-line"></i> <span>题目管理</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="nav-item logout" id="sidebarLogout">
+        <i class="ri-logout-box-line"></i> <span>退出登录</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===== 主内容区 ===== -->
+  <main class="main-content" id="mainContent">
+    <!-- 顶部栏 -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" id="sidebarToggle" title="折叠侧边栏">
+          <i class="ri-menu-fold-line"></i>
+        </button>
+        <span class="topbar-title" id="topbarTitle">智能做题</span>
+      </div>
+      <div class="topbar-right">
+        <span id="strengthBadge" class="strength-badge badge-primary">--</span>
+        <div class="topbar-user" id="topbarUser">
+          <img src="assets/user-avatar.svg" alt="" class="topbar-user-avatar" id="topbarAvatar">
+          <span class="topbar-user-name" id="topbarUserName">用户</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ===== 做题模块 ===== -->
+    <section class="page-section active" id="section-exam">
+      <div class="exam-toolbar">
+        <label style="font-size:var(--font-size-sm);color:var(--color-text-secondary);">题量:</label>
+        <input type="number" id="countInput" class="input count-input" min="1" max="50" value="5" placeholder="5">
+        <div class="quick-counts" id="quickCounts">
+          <button class="quick-count-btn active" data-n="5">5</button>
+          <button class="quick-count-btn" data-n="10">10</button>
+          <button class="quick-count-btn" data-n="20">20</button>
+          <button class="quick-count-btn" data-n="50">50</button>
+        </div>
+        <div style="flex:1;"></div>
+        <button class="btn btn-outline btn-sm" id="examStartBtn">
+          <i class="ri-refresh-line"></i> 开始/换一批
+        </button>
+        <button class="btn btn-outline btn-sm" id="examSubmitAllBtn">
+          <i class="ri-send-plane-line"></i> 一键提交
+        </button>
+        <button class="btn btn-outline btn-sm" id="examProfileBtn">
+          <i class="ri-user-line"></i> 我的画像
+        </button>
+      </div>
+
+      <!-- 知识点筛选 -->
+      <div class="kp-filter-wrap" id="kpFilterWrap" style="margin-bottom:var(--space-lg);">
+        <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-sm);">
+          <span style="font-size:var(--font-size-sm);color:var(--color-text-secondary);">知识点:</span>
+          <button class="quick-count-btn active" id="kpToggleAll" style="font-size:11px;">全选/反选</button>
+          <span id="kpSelectedCount" style="font-size:var(--font-size-xs);color:var(--color-text-muted);"></span>
+        </div>
+        <div class="kp-filter-list" id="kpFilterList"></div>
+      </div>
+
+      <!-- 进度条 -->
+      <div class="exam-progress" id="examProgressBar" style="display:none;">
+        <div class="exam-progress-bar"><div class="exam-progress-fill" id="examProgressFill" style="width:0%;"></div></div>
+        <span class="exam-progress-text" id="examProgressText">0/0</span>
+      </div>
+
+      <!-- 题目列表 -->
+      <div id="problemsContainer"></div>
+
+      <!-- 会话报告 -->
+      <div class="card session-report" id="sessionReportCard" style="display:none;">
+        <h3 style="margin-bottom:12px;">本次能力报告</h3>
+        <div id="sessionReport"></div>
+      </div>
+    </section>
+
+    <!-- ===== 能力画像模块 ===== -->
+    <section class="page-section" id="section-profile">
+      <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-xl);">
+        <button class="btn btn-primary btn-sm" id="profileRefreshBtn"><i class="ri-refresh-line"></i> 刷新画像</button>
+      </div>
+      <div class="profile-grid">
+        <div class="profile-overview-card" id="profileOverviewCard">
+          <div class="strength-ring" id="strengthRing"></div>
+          <div class="strength-trend" id="strengthTrend"></div>
+        </div>
+        <div id="profileChartArea"></div>
+      </div>
+      <div id="weakAlertArea"></div>
+      <div id="profilePracticeArea"></div>
+      <div id="profileAnalysisArea"></div>
+    </section>
+
+    <!-- ===== 错题本模块 ===== -->
+    <section class="page-section" id="section-wrong">
+      <div class="wrong-toolbar">
+        <label style="font-size:var(--font-size-sm);color:var(--color-text-secondary);">条数:</label>
+        <input id="wrongLimitInput" type="number" min="1" max="200" value="20" class="input" style="width:80px;">
+        <label style="font-size:var(--font-size-sm);color:var(--color-text-secondary);">排序:</label>
+        <select id="wrongSortSelect" class="input" style="width:120px;">
+          <option value="time">按时间</option>
+          <option value="knowledge_point">按知识点</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="wrongLoadBtn"><i class="ri-search-line"></i> 加载错题</button>
+        <div style="flex:1;"></div>
+        <label style="font-size:var(--font-size-sm);color:var(--color-text-secondary);">重做模式:</label>
+        <select id="wrongRedoMode" class="input" style="width:110px;">
+          <option value="time">按时间</option>
+          <option value="knowledge_point">按知识点</option>
+        </select>
+        <select id="wrongRedoKp" class="input" style="width:140px;display:none;"><option value="">选择知识点</option></select>
+        <input id="wrongRedoCount" type="number" min="1" max="200" value="10" class="input" style="width:70px;">
+        <button class="btn btn-outline btn-sm" id="wrongStartRedoBtn"><i class="ri-play-circle-line"></i> 开始重做</button>
+      </div>
+      <div id="wrongList"></div>
+      <div id="wrongLoadMoreWrap" style="text-align:center;margin-top:var(--space-lg);"></div>
+    </section>
+
+    <!-- ===== AI 伴学模块 ===== -->
+    <section class="page-section" id="section-chat" style="padding:0;">
+      <div class="chat-container" style="height:calc(100vh - var(--header-height));">
+        <!-- 对话历史侧栏 -->
+        <div class="chat-sidebar" id="chatSidebar">
+          <div class="chat-sidebar-header">
+            <span style="font-weight:600;font-size:var(--font-size-sm);">对话历史</span>
+            <button class="btn btn-primary btn-sm" id="chatNewBtn"><i class="ri-add-line"></i> 新建</button>
+          </div>
+          <div class="chat-sidebar-list" id="chatHistoryList"></div>
+        </div>
+        <!-- 聊天主区域 -->
+        <div class="chat-main-panel">
+          <div class="chat-messages" id="chatBody">
+            <div class="chat-empty" id="chatEmpty">
+              <img src="assets/girl.png" alt="AI" class="chat-empty-avatar">
+              <div class="chat-empty-greeting" id="chatGreeting">你好！</div>
+              <p style="color:var(--color-text-secondary);font-size:var(--font-size-sm);">我是你的计算机网络学习助教，有什么可以帮你的？</p>
+              <div class="chat-suggestions">
+                <button class="chat-suggestion">解释 TCP 三次握手</button>
+                <button class="chat-suggestion">OSPF 和 BGP 的区别</button>
+                <button class="chat-suggestion">子网划分练习题</button>
+                <button class="chat-suggestion">HTTPS 的工作原理</button>
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-bar">
+            <div class="chat-input-wrap">
+              <textarea id="chatInput" placeholder="输入消息，Enter 发送，Shift+Enter 换行..." rows="1"></textarea>
+              <button class="chat-send-btn" id="chatSendBtn" title="发送">
+                <i class="ri-send-plane-fill"></i>
+              </button>
+              <button class="chat-stop-btn" id="chatStopBtn" title="停止生成">
+                <i class="ri-stop-circle-fill"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 收藏夹模块 ===== -->
+    <section class="page-section" id="section-bookmarks">
+      <div id="bookmarksContainer"></div>
+    </section>
+
+    <!-- ===== 管理后台模块 ===== -->
+    <section class="page-section" id="section-admin">
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-admin-tab="admin-manage">题目管理</button>
+        <button class="admin-tab" data-admin-tab="admin-import">批量导入</button>
+        <button class="admin-tab" data-admin-tab="admin-stats">数据统计</button>
+      </div>
+
+      <!-- 题目管理 -->
+      <div class="page-section active" id="admin-manage" style="padding:0;">
+        <div style="display:flex;gap:var(--space-md);margin-bottom:var(--space-xl);flex-wrap:wrap;">
+          <input id="adminSearch" class="input" placeholder="搜索题目/编号/答案..." style="max-width:240px;">
+          <select id="adminDiffFilter" class="input" style="width:120px;">
+            <option value="">所有难度</option>
+            <option value="简单">简单</option>
+            <option value="中等">中等</option>
+            <option value="困难">困难</option>
+          </select>
+          <select id="adminKpFilter" class="input" style="width:160px;">
+            <option value="">所有知识点</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="adminSearchBtn"><i class="ri-search-line"></i> 搜索</button>
+          <div style="flex:1;"></div>
+          <button class="btn btn-primary btn-sm" id="adminAddBtn"><i class="ri-add-line"></i> 添加题目</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr><th>编号</th><th>题目</th><th>答案</th><th>难度</th><th>知识点</th><th>时间</th><th>操作</th></tr>
+            </thead>
+            <tbody id="adminTableBody"><tr><td colspan="7" style="text-align:center;color:var(--color-text-muted);padding:32px;">加载中...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="admin-pagination" id="adminPagination"></div>
+      </div>
+
+      <!-- 批量导入 -->
+      <div class="page-section" id="admin-import" style="display:none;padding:0;">
+        <div class="admin-upload-area" id="adminUploadArea">
+          <div class="admin-upload-icon"><i class="ri-upload-cloud-2-line"></i></div>
+          <p style="font-weight:500;margin-bottom:4px;">拖拽文件到此处，或点击上传</p>
+          <p class="text-sm text-muted">支持 JSON / CSV 格式</p>
+          <input type="file" id="adminFileInput" accept=".json,.csv" style="display:none;">
+        </div>
+        <div id="adminImportStatus" style="margin-top:var(--space-md);"></div>
+        <div id="adminPreviewSection" style="display:none;margin-top:var(--space-lg);">
+          <div id="adminPreviewContent"></div>
+          <div style="display:flex;gap:var(--space-md);margin-top:var(--space-md);">
+            <button class="btn btn-primary" id="adminConfirmImport">确认导入</button>
+            <button class="btn btn-outline" id="adminCancelImport">取消</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 数据统计 -->
+      <div class="page-section" id="admin-stats" style="display:none;padding:0;">
+        <div class="admin-stats-grid">
+          <div class="admin-stat-card">
+            <div class="admin-stat-value" id="statTotal">0</div>
+            <div class="admin-stat-label">总题目数</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-value" id="statEasy" style="color:var(--color-success);">0</div>
+            <div class="admin-stat-label">简单</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-value" id="statMedium" style="color:var(--color-warning);">0</div>
+            <div class="admin-stat-label">中等</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-value" id="statHard" style="color:var(--color-danger);">0</div>
+            <div class="admin-stat-label">困难</div>
+          </div>
+        </div>
+        <div><strong>知识点分布（Top 10）</strong></div>
+        <div id="adminKpStats" style="margin-top:var(--space-md);"></div>
+        <div style="margin-top:var(--space-xl);"><strong>最近添加</strong></div>
+        <div id="adminRecentProblems" style="margin-top:var(--space-md);"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- 管理后台：编辑/添加题目的模态框 -->
+<div class="modal-overlay hidden" id="adminEditModal">
+  <div class="modal">
+    <h3 id="adminModalTitle" style="margin-bottom:16px;">编辑题目</h3>
+    <form id="adminProblemForm" style="display:flex;flex-direction:column;gap:12px;">
+      <input id="adminFormNum" class="input" placeholder="题目编号" required>
+      <textarea id="adminFormProblem" class="input" rows="4" placeholder="题目内容" required></textarea>
+      <input id="adminFormAnswer" class="input" placeholder="答案" required>
+      <select id="adminFormDifficulty" class="input" required>
+        <option value="简单">简单</option><option value="中等">中等</option><option value="困难">困难</option>
+      </select>
+      <input id="adminFormKp" class="input" placeholder="知识点" required>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+        <button type="button" class="btn btn-outline" id="adminModalCancel">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 第三方库 -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+
+<!-- 应用脚本 -->
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/dashboard-exam.js"></script>
+<script src="js/dashboard-profile.js"></script>
+<script src="js/dashboard-wrong.js"></script>
+<script src="js/dashboard-chat.js"></script>
+<script src="js/dashboard-admin.js"></script>
+<script src="js/dashboard-bookmarks.js"></script>
+</body>
+</html>

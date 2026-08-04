@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>星伴 StarPal — 登录</title>
+  <link rel="icon" href="assets/girl.png" type="image/png">
+  <link rel="stylesheet" href="assets/starpal-style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .password-toggle-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--color-text-muted); font-size: 18px; padding: 2px; }
+    .password-toggle-btn:hover { color: var(--color-text-secondary); }
+    .remember-row { display: flex; align-items: center; justify-content: space-between; font-size: var(--font-size-sm); }
+    .full-btn { width: 100%; padding: 11px 0; justify-content: center; font-size: var(--font-size-md); border-radius: var(--radius-md); transition: all var(--transition-base); }
+    .full-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,70,229,.3); }
+    .brand-quote-slider { min-height: 48px; display: flex; align-items: center; }
+  </style>
+</head>
+<body>
+
+<div class="login-page">
+  <!-- 左侧品牌区 -->
+  <div class="login-brand">
+    <img src="assets/girl.png" alt="StarPal" class="login-brand-logo">
+    <h1>星伴 StarPal</h1>
+    <p>智能学习引擎 v2.0</p>
+    <div class="brand-quote-slider">
+      <p class="login-brand-quote" id="brandQuote">每天进步一点点，知识的力量终将绽放。</p>
+    </div>
+  </div>
+
+  <!-- 右侧表单区 -->
+  <div class="login-form-area">
+    <div class="login-form-card">
+      <!-- Tab 切换 -->
+      <div class="login-tabs">
+        <button class="login-tab active" data-tab="login">登录</button>
+        <button class="login-tab" data-tab="register">注册</button>
+      </div>
+
+      <!-- 登录表单 -->
+      <form id="loginForm" class="login-form active" autocomplete="off">
+        <div class="input-group">
+          <div style="position:relative;">
+            <i class="ri-mail-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-text-muted);font-size:18px;"></i>
+            <input type="text" id="login-username" class="input" placeholder="邮箱地址" style="padding-left:38px;" required autocomplete="username">
+          </div>
+          <span id="login-email-err" class="error-text"></span>
+        </div>
+        <div class="input-group">
+          <div style="position:relative;">
+            <i class="ri-lock-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-text-muted);font-size:18px;"></i>
+            <input type="password" id="login-password" class="input" placeholder="密码" style="padding-left:38px;" required autocomplete="current-password">
+            <button type="button" class="password-toggle-btn" id="loginPasswordToggle">
+              <i class="ri-eye-off-line"></i>
+            </button>
+          </div>
+        </div>
+        <div class="remember-row">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="checkbox" style="accent-color:var(--color-primary);"> 记住我
+          </label>
+          <a href="#" style="font-size:var(--font-size-sm);">忘记密码？</a>
+        </div>
+        <button type="submit" class="btn btn-primary full-btn">
+          <span>登 录</span>
+          <i class="ri-arrow-right-line"></i>
+        </button>
+      </form>
+
+      <!-- 注册表单 -->
+      <form id="registerForm" class="login-form" autocomplete="off">
+        <div class="input-group">
+          <div style="position:relative;">
+            <i class="ri-user-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-text-muted);font-size:18px;"></i>
+            <input type="text" id="register-name" class="input" placeholder="姓名" style="padding-left:38px;" required>
+          </div>
+        </div>
+        <div class="input-group">
+          <div style="position:relative;">
+            <i class="ri-mail-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-text-muted);font-size:18px;"></i>
+            <input type="text" id="register-username" class="input" placeholder="邮箱地址" style="padding-left:38px;" required autocomplete="username">
+          </div>
+          <span id="register-email-err" class="error-text"></span>
+        </div>
+        <div class="input-group">
+          <div style="position:relative;">
+            <i class="ri-lock-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-text-muted);font-size:18px;"></i>
+            <input type="password" id="register-password" class="input" placeholder="密码（至少6位）" style="padding-left:38px;" required autocomplete="new-password">
+            <button type="button" class="password-toggle-btn" id="registerPasswordToggle">
+              <i class="ri-eye-off-line"></i>
+            </button>
+          </div>
+        </div>
+        <div class="input-group">
+          <div style="position:relative;">
+            <i class="ri-lock-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-text-muted);font-size:18px;"></i>
+            <input type="password" id="register-confirm" class="input" placeholder="确认密码" style="padding-left:38px;" required autocomplete="new-password">
+            <button type="button" class="password-toggle-btn" id="confirmPasswordToggle">
+              <i class="ri-eye-off-line"></i>
+            </button>
+          </div>
+        </div>
+        <div style="font-size:var(--font-size-sm);color:var(--color-text-secondary);">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="checkbox" id="agreeTerms" required style="accent-color:var(--color-primary);">
+            我同意 <a href="#">服务条款</a> 和 <a href="#">隐私政策</a>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary full-btn">
+          <span>创建账户</span>
+          <i class="ri-arrow-right-line"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/auth.js"></script>
+
+<!-- 品牌金句轮播 -->
+<script>
+(function(){
+  var quotes = [
+    '每天进步一点点，知识的力量终将绽放。',
+    '学习不是填满水桶，而是点燃火焰。',
+    '每一个错误都是通往精通的阶梯。',
+    '今天的努力，是明天实力的基石。'
+  ];
+  var i = 0;
+  var el = document.getElementById('brandQuote');
+  if (el) setInterval(function(){ i = (i+1) % quotes.length; el.textContent = quotes[i]; }, 4000);
+})();
+</script>
+</body>
+</html>

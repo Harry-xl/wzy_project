@@ -1,0 +1,12 @@
+# PDF OCR 工具依赖
+# 独立于主项目，需单独安装
+paddlepaddle>=2.6.0        # CPU 版（Windows 无 GPU 版 wheel）
+paddleocr>=2.7.0
+PyMuPDF>=1.23.0            # fitz — PDF 渲染
+python-docx>=0.8.11        # DOCX 输出（与 deepseek_importer 版本一致）
+Pillow>=10.0.0             # 图片处理
+tqdm>=4.66.0               # 进度条（与 deepseek_importer 版本一致）
+
+# 测试依赖
+reportlab>=4.0             # 生成测试 PDF
+pytest>=7.0                # 测试框架
