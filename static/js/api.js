@@ -96,16 +96,23 @@ class ApiClient {
      * @param {AbortSignal} signal - 中断信号
      * @returns {Response} 流式响应
      */
-    async chatStream(message, username, chatId, systemPrompt = null, signal = null) {
+    async chatStream(message, username, chatId, systemPrompt = null, signal = null, options = {}) {
         const requestData = {
             message,
             username,
             chat_id: chatId
         };
 
-        // 如果提供了系统提示词，则添加到请求数据中
         if (systemPrompt !== null) {
             requestData.system_prompt = systemPrompt;
+        }
+
+        // 知识范围切换: "system" | "personal"
+        if (options.knowledge_scope) {
+            requestData.knowledge_scope = options.knowledge_scope;
+        }
+        if (options.user_id) {
+            requestData.user_id = options.user_id;
         }
 
         const config = {

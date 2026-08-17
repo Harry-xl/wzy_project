@@ -36,6 +36,10 @@ extracted_questions_cache.json
 import_checkpoint.json
 *.log
 
+# 大文件与用户上传数据（不入库）
+textbook.pdf
+uploads/
+
 # Test
 .pytest_cache/
 htmlcov/

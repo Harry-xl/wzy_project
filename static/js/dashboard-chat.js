@@ -138,7 +138,10 @@
     if (stopBtn) stopBtn.style.display = 'flex'; if (sendBtn) sendBtn.style.display = 'none';
 
     try {
-      const resp = await apiClient.chatStream(userMsg, storageManager.currentUser || userName, currentChatId, null, controller.signal);
+      const resp = await apiClient.chatStream(
+        userMsg, storageManager.currentUser || userName, currentChatId, null, controller.signal,
+        { knowledge_scope: knowledgeScope, user_id: storageManager.getCurrentUserId() || 0 }
+      );
       if (!resp.ok) { console.error('[chat] HTTP错误:', resp.status, resp.statusText); finishReply('抱歉，AI 服务暂不可用。'); return; }
       const reader = resp.body.getReader(); const decoder = new TextDecoder();
       let full = '', sseBuf = '', eventAcc = '', sources = null;
@@ -152,7 +155,7 @@
             try {
               const o = JSON.parse(eventAcc);
               if (o.reply !== undefined) { full += o.reply; aiPlaceholder.content = full; }
-              if (o.done && o.sources) { sources = o.sources; }
+              if (o.done && o.sources) { sources = o.sources; aiPlaceholder.sources = o.sources; }
               storageManager.saveChatHistory(currentChatId, history);
             } catch (_) { }
             eventAcc = '';
@@ -238,7 +241,23 @@
     });
   }
 
+  let knowledgeScope = 'system';  // "system" | "personal"
+
   DS.Chat = { init, sendMessage };
+
+  // 检索范围切换
+  document.querySelectorAll('.chat-scope-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const scope = btn.dataset.scope;
+      if (scope === 'personal') {
+        const uid = storageManager.getCurrentUserId();
+        if (!uid) { Utils.showToast('请先登录', 'warning'); return; }
+      }
+      knowledgeScope = scope;
+      document.querySelectorAll('.chat-scope-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
   // 立即初始化：因为 dashboard.js 在本脚本之前加载，
   // 其内部的 DS.Chat.init() 调用时 DS.Chat 尚未注册，需在此补调
   init();

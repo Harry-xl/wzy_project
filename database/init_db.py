@@ -1,7 +1,11 @@
 import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
 import mysql.connector
+
+# 自动加载项目根目录下的 .env 文件
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # 与 server/app.py 保持一致
 DB_CONFIG = {
@@ -39,8 +43,10 @@ def execute_multi_sql(conn, sql_text: str, info: str):
     print(f'==> 执行 {info} ...')
     try:
         with conn.cursor() as cursor:
-            for _ in cursor.execute(sql_text, multi=True):
-                pass
+            for result in cursor.execute(sql_text, multi=True):
+                # 消费所有结果集，防止 "Unread result found" 错误
+                if result.with_rows:
+                    result.fetchall()
         conn.commit()
         print(f'==> {info} 完成')
     except Exception as e:
@@ -111,6 +117,24 @@ def main():
         if kb_sql_path.exists():
             kb_sql = read_sql(kb_sql_path)
             execute_multi_sql(conn2, kb_sql, '002_knowledge_base.sql（知识库表与字段）')
+
+        # 个人资料库迁移
+        lib_sql_path = SQL_DIR / 'migrations' / '003_library.sql'
+        if lib_sql_path.exists():
+            lib_sql = read_sql(lib_sql_path)
+            execute_multi_sql(conn2, lib_sql, '003_library.sql（资料库表与双轨字段）')
+
+        # 知识点体系统一 + 计算机网络测试数据
+        unify_sql_path = SQL_DIR / 'migrations' / '004_unify_knowledge_points.sql'
+        if unify_sql_path.exists():
+            unify_sql = read_sql(unify_sql_path)
+            execute_multi_sql(conn2, unify_sql, '004_unify_knowledge_points.sql（知识点体系统一）')
+
+        # 学习卡片缓存 + 文档可读内容
+        cards_sql_path = SQL_DIR / 'migrations' / '005_learning_cards.sql'
+        if cards_sql_path.exists():
+            cards_sql = read_sql(cards_sql_path)
+            execute_multi_sql(conn2, cards_sql, '005_learning_cards.sql（学习卡片与可读内容）')
 
         print('=== 数据库初始化完成 ===')
     finally:

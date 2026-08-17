@@ -82,12 +82,15 @@ class RAGService:
         top_k: int = RAG_DEFAULT_TOP_K,
         doc_type: Optional[str] = None,
         similarity_threshold: float = RAG_SIMILARITY_THRESHOLD,
+        user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """混合检索相关知识块。
 
         流程:
           1. 将查询嵌入为向量
           2. ChromaDB 向量语义检索（取 top_k * 2 候选）
+             - user_id=None: 检索系统知识库（metadata user_id="system" 或不存在）
+             - user_id=int: 检索个人资料库（metadata user_id="<user_id>"）
           3. MySQL 关键词辅助检索
           4. 合并去重，按相似度排序
           5. 过滤低于阈值的结果
@@ -98,11 +101,14 @@ class RAGService:
             top_k: 返回的最大结果数。
             doc_type: 可选，限定文档类型（textbook/rfc/knowledge_entry/...）。
             similarity_threshold: 相似度阈值（0.0-1.0），低于此值的结果被过滤。
+            user_id: 可选，限定检索范围。
+                     None → 系统知识库（knowledge_documents.user_id IS NULL）
+                     具体值 → 个人资料库。
 
         Returns:
             知识块列表，每项包含:
               chunk_id, content, doc_title, doc_type, source,
-              source_page, knowledge_points, sub_topic_name, score
+              source_page, knowledge_points, sub_topic_name, score, source_type
         """
         if not query or not query.strip():
             return []
@@ -114,32 +120,40 @@ class RAGService:
         query_vector = self._embedding.embed_single(query.strip())
         if query_vector is None:
             print("[RAGService] 查询嵌入生成失败，回退到关键词检索")
-            return self._keyword_search(query, top_k, doc_type)
+            return self._keyword_search(query, top_k, doc_type, user_id=user_id)
 
         # Step 2: ChromaDB 向量检索
         chroma_k = min(top_k * 2, RAG_MAX_TOP_K)  # 多取一些候选用于重排序
         try:
-            chroma_results = self._collection.query(
-                query_embeddings=[query_vector],
-                n_results=chroma_k,
-                include=["distances"],
-            )
+            query_kwargs = {
+                "query_embeddings": [query_vector],
+                "n_results": chroma_k,
+                "include": ["distances"],
+            }
+            # user_id 过滤：限定检索范围
+            # user_id=None → 不过滤（返回所有：旧占位数据 + 新系统资料）
+            # user_id=int  → 仅检索该用户的个人资料
+            if user_id is not None:
+                query_kwargs["where"] = {"user_id": str(user_id)}
+            # user_id=None 时不加 where 条件，兼容旧数据（无 metadata）
+
+            chroma_results = self._collection.query(**query_kwargs)
         except Exception as e:
             print(f"[RAGService] ChromaDB 检索失败: {e}")
-            return self._keyword_search(query, top_k, doc_type)
+            return self._keyword_search(query, top_k, doc_type, user_id=user_id)
 
         chroma_ids = chroma_results.get("ids", [[]])[0]
         chroma_distances = chroma_results.get("distances", [[]])[0]
 
         if not chroma_ids:
             # 向量检索无结果，回退到关键词检索
-            return self._keyword_search(query, top_k, doc_type)
+            return self._keyword_search(query, top_k, doc_type, user_id=user_id)
 
         # Step 3: 从 MySQL 查询完整内容
-        chunks = self._fetch_chunks_by_ids(chroma_ids, chroma_distances, doc_type)
+        chunks = self._fetch_chunks_by_ids(chroma_ids, chroma_distances, doc_type, user_id=user_id)
 
         # Step 4: 合并关键词检索结果（混合检索）
-        keyword_chunks = self._keyword_search(query, top_k, doc_type)
+        keyword_chunks = self._keyword_search(query, top_k, doc_type, user_id=user_id)
         chunk_map = {c["chunk_id"]: c for c in chunks}
 
         for kc in keyword_chunks:
@@ -172,6 +186,7 @@ class RAGService:
         knowledge_chunks: Optional[List[Dict[str, Any]]] = None,
         top_k: int = RAG_DEFAULT_TOP_K,
         context_type: str = "chat",
+        user_id: Optional[int] = None,
     ) -> tuple:
         """构建 RAG 增强的 Prompt。
 
@@ -183,13 +198,14 @@ class RAGService:
             knowledge_chunks: 预检索的知识块列表（如为 None 则自动检索）。
             top_k: 自动检索时的结果数。
             context_type: 上下文类型 ("chat" 聊天 / "explain" 讲解)。
+            user_id: 可选，限定检索范围（None=系统，具体值=个人）。
 
         Returns:
             (final_prompt, sources) 元组，其中 sources 是来源引用列表。
         """
         # 自动检索（如果未提供预检索结果）
         if knowledge_chunks is None:
-            knowledge_chunks = self.search(user_message, top_k=top_k)
+            knowledge_chunks = self.search(user_message, top_k=top_k, user_id=user_id)
 
         # 构建知识上下文块
         context_block, sources = self.build_context_block(knowledge_chunks)
@@ -264,6 +280,7 @@ class RAGService:
                 "source_page": source_page,
                 "chunk_id": chunk.get("chunk_id"),
                 "score": round(chunk.get("score", 0), 3),
+                "source_type": chunk.get("source_type", "system"),
             })
 
             # 知识块内容（截断过长内容）
@@ -282,7 +299,8 @@ class RAGService:
     # ================================================================
 
     def index_chunks(
-        self, doc_id: int, chunks_data: List[Dict[str, Any]]
+        self, doc_id: int, chunks_data: List[Dict[str, Any]],
+        user_id: Optional[int] = None,
     ) -> int:
         """将知识块索引到 ChromaDB。
 
@@ -292,6 +310,9 @@ class RAGService:
             doc_id: 所属文档 ID。
             chunks_data: 块数据列表，每项包含:
               chunk_index, content, sub_topic_id (可选)
+            user_id: 可选，关联的用户 ID。
+                     None → 系统知识库（ChromaDB metadata: user_id="system"）
+                     具体值 → 个人资料库（ChromaDB metadata: user_id="<user_id>"）
 
         Returns:
             成功索引的块数量。
@@ -303,6 +324,9 @@ class RAGService:
         if not conn:
             print("[RAGService] 数据库连接失败，无法索引块")
             return 0
+
+        # ChromaDB metadata 中的 user_id 标记
+        metadata_user_id = "system" if user_id is None else str(user_id)
 
         indexed = 0
         try:
@@ -351,12 +375,14 @@ class RAGService:
 
                 if embeddings and len(embeddings) == len(pending_embeddings):
                     chroma_ids = [str(cid) for cid, _ in pending_embeddings]
+                    metadatas = [{"user_id": metadata_user_id} for _ in pending_embeddings]
                     self._collection.add(
                         ids=chroma_ids,
                         embeddings=embeddings,
+                        metadatas=metadatas,
                     )
                     indexed = len(pending_embeddings)
-                    print(f"[RAGService] 已索引 {indexed} 个块到 ChromaDB")
+                    print(f"[RAGService] 已索引 {indexed} 个块到 ChromaDB (user_id={metadata_user_id})")
                 else:
                     print("[RAGService] 嵌入生成失败，块已存入 MySQL 但未索引到 ChromaDB")
 
@@ -397,6 +423,7 @@ class RAGService:
         chroma_ids: List[str],
         distances: List[float],
         doc_type: Optional[str] = None,
+        user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """从 MySQL 查询知识块的完整内容和元数据。
 
@@ -404,6 +431,7 @@ class RAGService:
             chroma_ids: ChromaDB 返回的 chunk_id 列表（字符串格式）。
             distances: ChromaDB 返回的距离值列表（余弦距离）。
             doc_type: 可选，过滤文档类型。
+            user_id: 可选，过滤用户范围。
 
         Returns:
             知识块列表，score 由余弦距离转换而来 (1.0 - distance)。
@@ -434,6 +462,7 @@ class RAGService:
                     kd.source,
                     kd.source_page,
                     kd.knowledge_points,
+                    kd.user_id,
                     kst.sub_topic_name
                 FROM knowledge_chunks kc
                 JOIN knowledge_documents kd ON kc.doc_id = kd.doc_id
@@ -441,11 +470,12 @@ class RAGService:
                 WHERE kc.chunk_id IN ({})
             """.format(placeholders)
 
+            params = list(int_ids)
             if doc_type:
                 sql += " AND kd.doc_type = %s"
-                cursor.execute(sql, int_ids + [doc_type])
-            else:
-                cursor.execute(sql, int_ids)
+                params.append(doc_type)
+
+            cursor.execute(sql, params)
 
             rows = cursor.fetchall() or []
 
@@ -472,6 +502,9 @@ class RAGService:
                     except json.JSONDecodeError:
                         knowledge_points = [kps_raw]
 
+                user_id_val = row.get("user_id")
+                source_type = "system" if user_id_val is None else "personal"
+
                 chunks.append({
                     "chunk_id": cid,
                     "content": row["content"],
@@ -483,6 +516,7 @@ class RAGService:
                     "knowledge_points": knowledge_points,
                     "sub_topic_name": row.get("sub_topic_name", ""),
                     "score": round(score, 4),
+                    "source_type": source_type,
                 })
 
             return chunks
@@ -499,6 +533,7 @@ class RAGService:
         query: str,
         top_k: int = RAG_DEFAULT_TOP_K,
         doc_type: Optional[str] = None,
+        user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """MySQL 关键词搜索（RAG 回退方案）。
 
@@ -508,6 +543,7 @@ class RAGService:
             query: 搜索关键词。
             top_k: 返回结果数。
             doc_type: 可选，文档类型过滤。
+            user_id: 可选，限定用户范围（None=系统，具体值=个人）。
 
         Returns:
             知识块列表。
@@ -537,6 +573,7 @@ class RAGService:
                     kd.source,
                     kd.source_page,
                     kd.knowledge_points,
+                    kd.user_id,
                     kst.sub_topic_name
                 FROM knowledge_chunks kc
                 JOIN knowledge_documents kd ON kc.doc_id = kd.doc_id
@@ -549,6 +586,12 @@ class RAGService:
             if doc_type:
                 sql += " AND kd.doc_type = %s"
                 params.append(doc_type)
+
+            if user_id is not None:
+                sql += " AND kd.user_id = %s"
+                params.append(user_id)
+            else:
+                sql += " AND kd.user_id IS NULL"
 
             sql += " LIMIT %s"
             params.append(top_k * 2)
@@ -566,6 +609,9 @@ class RAGService:
                     except json.JSONDecodeError:
                         knowledge_points = [kps_raw]
 
+                user_id_val = row.get("user_id")
+                source_type = "system" if user_id_val is None else "personal"
+
                 chunks.append({
                     "chunk_id": row["chunk_id"],
                     "content": row["content"],
@@ -577,6 +623,7 @@ class RAGService:
                     "knowledge_points": knowledge_points,
                     "sub_topic_name": row.get("sub_topic_name", ""),
                     "score": 0.25,  # 关键词匹配的基准分
+                    "source_type": source_type,
                 })
 
             return chunks[:top_k]

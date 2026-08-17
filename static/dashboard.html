@@ -37,6 +37,9 @@
       <button class="nav-item" data-section="bookmarks">
         <i class="ri-star-line"></i> <span>收藏夹</span>
       </button>
+      <button class="nav-item" data-section="library">
+        <i class="ri-folder-2-line"></i> <span>我的资料库</span>
+      </button>
       <div class="sidebar-nav-label">管理</div>
       <button class="nav-item" data-section="admin">
         <i class="ri-settings-3-line"></i> <span>题目管理</span>
@@ -185,6 +188,10 @@
               </div>
             </div>
           </div>
+          <div class="chat-scope-toggle">
+            <button class="chat-scope-btn active" data-scope="system">🌐 系统知识库</button>
+            <button class="chat-scope-btn" data-scope="personal">📚 我的资料</button>
+          </div>
           <div class="chat-input-bar">
             <div class="chat-input-wrap">
               <textarea id="chatInput" placeholder="输入消息，Enter 发送，Shift+Enter 换行..." rows="1"></textarea>
@@ -211,6 +218,7 @@
         <button class="admin-tab active" data-admin-tab="admin-manage">题目管理</button>
         <button class="admin-tab" data-admin-tab="admin-import">批量导入</button>
         <button class="admin-tab" data-admin-tab="admin-stats">数据统计</button>
+        <button class="admin-tab" data-admin-tab="admin-library">系统知识库</button>
       </div>
 
       <!-- 题目管理 -->
@@ -259,6 +267,22 @@
         </div>
       </div>
 
+      <!-- 系统知识库 -->
+      <div class="page-section" id="admin-library" style="display:none;padding:0;">
+        <div class="admin-upload-area" id="adminLibUploadArea" style="margin-bottom:var(--space-xl);">
+          <div class="admin-upload-icon"><i class="ri-upload-cloud-2-line"></i></div>
+          <p style="font-weight:500;margin-bottom:4px;">拖拽 PDF/Word 到此处，或点击上传</p>
+          <p class="text-sm text-muted">上传《计算机网络》(谢希仁 第8版) 等权威教材资料作为系统知识库</p>
+          <input type="file" id="adminLibFileInput" accept=".pdf,.docx" style="display:none;">
+        </div>
+        <div class="library-progress" id="adminLibProgress" style="display:none;">
+          <div class="library-progress-info"><span id="adminLibProgressStep">处理中...</span><span id="adminLibProgressPct">0%</span></div>
+          <div class="library-progress-bar-track"><div class="library-progress-bar-fill" id="adminLibProgressFill"></div></div>
+        </div>
+        <div id="adminLibDocList"></div>
+        <div class="library-empty" id="adminLibEmpty"><i class="ri-inbox-line" style="font-size:48px;color:var(--color-text-muted);"></i><p>系统知识库暂无资料，请上传权威教材</p></div>
+      </div>
+
       <!-- 数据统计 -->
       <div class="page-section" id="admin-stats" style="display:none;padding:0;">
         <div class="admin-stats-grid">
@@ -283,6 +307,63 @@
         <div id="adminKpStats" style="margin-top:var(--space-md);"></div>
         <div style="margin-top:var(--space-xl);"><strong>最近添加</strong></div>
         <div id="adminRecentProblems" style="margin-top:var(--space-md);"></div>
+      </div>
+    </section>
+
+    <!-- ===== 我的资料库 ===== -->
+    <section class="page-section" id="section-library">
+      <div class="library-upload-zone" id="libraryUploadZone">
+        <div class="library-upload-content">
+          <i class="ri-upload-cloud-2-line library-upload-icon"></i>
+          <div class="library-upload-title">拖拽文件到此处上传</div>
+          <div class="library-upload-subtitle">支持 PDF / Word (.docx)，最大 200MB</div>
+          <div class="library-upload-config">
+            <select id="libraryDocType" class="input" style="width:auto;">
+              <option value="other">文档类型</option>
+              <option value="textbook">教材</option><option value="rfc">RFC</option>
+              <option value="paper">论文</option><option value="note">笔记</option>
+              <option value="other">其他</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="librarySelectFileBtn"><i class="ri-folder-open-line"></i> 选择文件</button>
+          <input type="file" id="libraryFileInput" accept=".pdf,.docx" hidden>
+        </div>
+      </div>
+      <div class="library-progress" id="libraryProgress" style="display:none;">
+        <div class="library-progress-info"><span id="libraryProgressStep">处理中...</span><span id="libraryProgressPct">0%</span></div>
+        <div class="library-progress-bar-track"><div class="library-progress-bar-fill" id="libraryProgressFill"></div></div>
+      </div>
+      <div class="library-section"><h3 class="library-section-title"><i class="ri-file-list-3-line"></i> 文档列表 <span class="library-section-count" id="libraryDocCount">0</span></h3>
+        <div class="library-doc-list" id="libraryDocList"></div>
+        <div class="library-empty" id="libraryEmpty"><i class="ri-inbox-line" style="font-size:48px;color:var(--color-text-muted);"></i><p>还没有资料，上传你的第一份学习资料吧</p></div>
+      </div>
+      <div class="library-section">
+        <div class="library-tabs">
+          <button class="library-tab active" data-tab="by-topic"><i class="ri-list-check"></i> 按知识点</button>
+          <button class="library-tab" data-tab="by-doc"><i class="ri-file-text-line"></i> 按资料</button>
+        </div>
+        <div class="library-coverage-ring" id="libraryCoverageRing"><div class="library-coverage-placeholder">加载中...</div></div>
+        <div class="library-tab-content active" id="libraryTabByTopic">
+          <select id="libraryKpFilter" class="input" style="width:auto;margin-bottom:12px;"><option value="">全部知识点大类</option></select>
+          <div class="library-knowledge-table" id="libraryKnowledgeTable"></div>
+        </div>
+        <div class="library-tab-content" id="libraryTabByDoc" style="display:none;"><div class="library-doc-coverage" id="libraryDocCoverage"></div></div>
+      </div>
+      <div class="library-section">
+        <h3 class="library-section-title"><i class="ri-git-branch-line"></i> 知识图谱
+          <button class="btn btn-sm" id="libraryHighlightBtn" style="margin-left:auto;"><i class="ri-focus-3-line"></i> 推荐补充</button>
+        </h3>
+        <div class="library-graph-container" id="libraryGraphContainer"><div class="library-graph-placeholder">请先上传资料以生成知识图谱</div></div>
+        <div class="library-graph-legend">
+          <span><span class="legend-dot" style="background:#22C55E;"></span>已覆盖</span>
+          <span><span class="legend-dot" style="background:#F59E0B;"></span>部分覆盖</span>
+          <span><span class="legend-dot" style="background:#9CA3AF;"></span>未覆盖</span>
+        </div>
+      </div>
+      <div class="library-modal-overlay" id="libraryNodeModal" style="display:none;">
+        <div class="library-modal"><div class="library-modal-header"><h4 id="libraryNodeModalTitle"></h4>
+        <button class="btn-icon" id="libraryNodeModalClose"><i class="ri-close-line"></i></button></div>
+        <div class="library-modal-body" id="libraryNodeModalBody"></div></div>
       </div>
     </section>
 
@@ -316,6 +397,7 @@
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
 
 <!-- 应用脚本 -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/api.js"></script>
 <script src="js/storage.js"></script>
@@ -327,5 +409,8 @@
 <script src="js/dashboard-chat.js"></script>
 <script src="js/dashboard-admin.js"></script>
 <script src="js/dashboard-bookmarks.js"></script>
+<script src="js/dashboard-library.js"></script>
+<script src="js/dashboard-library-knowledge.js"></script>
+<script src="js/dashboard-library-graph.js"></script>
 </body>
 </html>

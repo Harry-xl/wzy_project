@@ -114,7 +114,7 @@ window.__DS = {
   updateTopbarStrength();
 
   // ==================== 模块切换 ====================
-  const sectionTitles = { exam: '智能做题', profile: '能力画像', wrong: '错题本', chat: 'AI 伴学', admin: '题目管理', bookmarks: '收藏夹' };
+  const sectionTitles = { exam: '智能做题', profile: '能力画像', wrong: '错题本', chat: 'AI 伴学', admin: '题目管理', bookmarks: '收藏夹', library: '我的资料库' };
 
   $$('.nav-item[data-section]').forEach(item => {
     item.addEventListener('click', () => {
@@ -133,6 +133,7 @@ window.__DS = {
       if (sec === 'wrong' && DS.Wrong) DS.Wrong.load();
       if (sec === 'admin' && DS.Admin) { DS.Admin.loadProblems(); DS.Admin.loadStats(); DS.Admin.loadKpOptions(); }
       if (sec === 'bookmarks' && DS.Bookmarks) DS.Bookmarks.render();
+      if (sec === 'library' && DS.Library) { DS.Library.init(); DS.LibraryKnowledge.loadCoverage(); DS.LibraryGraph.loadGraph(); }
 
       if (sec === 'admin') {
         $$('#section-admin .page-section').forEach(s => s.style.display = 'none');
@@ -150,11 +151,12 @@ window.__DS = {
       $$('.admin-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       const tid = tab.dataset.adminTab;
-      ['admin-manage', 'admin-import', 'admin-stats'].forEach(id => {
+      ['admin-manage', 'admin-import', 'admin-stats', 'admin-library'].forEach(id => {
         const el = $('#' + id); if (el) el.style.display = id === tid ? 'block' : 'none';
       });
       if (tid === 'admin-stats' && DS.Admin) DS.Admin.loadStats();
       if (tid === 'admin-manage' && DS.Admin) DS.Admin.loadProblems();
+      if (tid === 'admin-library' && DS.SysLibrary) DS.SysLibrary.init();
     });
   });
 

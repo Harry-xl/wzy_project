@@ -8,11 +8,37 @@ pytest 全局配置和 fixtures
 
 import os
 import sys
+from unittest.mock import MagicMock
+
 import pytest
 
 # 确保项目根目录在 Python 路径中
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
+
+# ================================================================
+# 模块级预处理：在任何项目模块导入前 mock MySQL 连接池
+# ================================================================
+
+# ================================================================
+# 模块级预处理：在任何项目模块导入前 mock MySQL 连接池
+# ================================================================
+
+
+def pytest_configure(config):
+    """pytest 启动时立即执行，在任何测试模块加载前 mock MySQL 连接池。"""
+    try:
+        import mysql.connector.pooling
+        mock_pool = MagicMock()
+        mock_pool.get_connection = MagicMock()
+        mysql.connector.pooling.MySQLConnectionPool = MagicMock(return_value=mock_pool)
+    except ImportError:
+        pass  # mysql-connector 未安装时跳过
+
+
+# ================================================================
+# Fixtures
+# ================================================================
 
 
 @pytest.fixture(scope="session")
@@ -21,15 +47,8 @@ def app():
 
     使用测试配置（独立数据库 wzyProjectDb_test，关闭清理线程）。
     """
-    # TODO: Stage 4 重构后改为:
-    # from src.server import create_app
-    # app = create_app(config='testing')
-    # return app
-
-    # 当前（重构前）:
     import server.app as app_module
 
-    # 覆盖为测试配置
     app_module.app.config["TESTING"] = True
     return app_module.app
 

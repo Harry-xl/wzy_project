@@ -30,6 +30,8 @@ from AI_operate.Ability_Profile import AbilityProfile
 from AI_operate.deepseek_chat import deepseek_chat
 # 新增：RAG 检索增强生成
 from AI_operate.rag_service import RAGService
+# 资料库 API Blueprint
+from server.library_api import library_bp, init_library
 
 # RAG 服务懒加载单例（避免每次请求重新加载嵌入模型）
 _rag_service_instance = None
@@ -45,6 +47,9 @@ def _get_rag_service():
 # 配置静态文件路径，指向上级目录的static文件夹
 app = Flask(__name__, static_folder='../static', static_url_path='/static')
 CORS(app)
+
+# 注册资料库 Blueprint（8 个端点）
+init_library(app)
 
 # MySQL配置
 db_config = {
@@ -976,6 +981,11 @@ def chat_stream():
         if isinstance(use_rag, str):
             use_rag = use_rag.lower() in ('true', '1', 'yes')
 
+        # 知识范围切换: "system"=系统知识库, "personal"=我的资料
+        knowledge_scope = str(payload.get('knowledge_scope', 'system')).lower()
+        if knowledge_scope not in ('system', 'personal'):
+            knowledge_scope = 'system'
+
         # 若未提供系统提示词，使用默认计算机网络学习助手角色设定
         default_system_prompt = (
             '你是一位计算机网络的专业学习助教，擅长用通俗且结构化的方式讲解概念与原理。\n'
@@ -1003,7 +1013,19 @@ def chat_stream():
         if use_rag:
             try:
                 rag = _get_rag_service()
-                chunks = rag.search(message, top_k=5)
+                # 根据 knowledge_scope 确定 user_id 过滤
+                if knowledge_scope == 'personal':
+                    # 个人资料库：需要用户 ID
+                    uid_raw = payload.get('user_id') or payload.get('userId') or 0
+                    try:
+                        uid = int(uid_raw)
+                        rag_user_id = uid if uid > 0 else None
+                    except (ValueError, TypeError):
+                        rag_user_id = None
+                else:
+                    # 系统知识库
+                    rag_user_id = None
+                chunks = rag.search(message, top_k=5, user_id=rag_user_id)
                 if chunks:
                     knowledge_context, sources = rag.build_context_block(chunks)
             except Exception as e:
